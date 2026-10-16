@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>わが家の家計簿</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Meiryo,sans-serif;background:#f3f6f4;color:#26372f}
+header{background:#315b50;color:white;padding:18px}
+header h1{margin:0;font-size:22px}
+main{max-width:850px;margin:auto;padding:14px}
+button,input,select{font:inherit}button{cursor:pointer}
+.nav,.tabs{display:flex;gap:8px;margin-bottom:14px}
+.nav button,.tabs button{flex:1;border:1px solid #d7e0da;border-radius:10px;background:white;padding:12px 6px;color:#315b50}
+.nav button.active,.tabs button.active{background:#315b50;color:white}
+.panel,.card,.budget-panel{background:white;border-radius:13px;padding:14px;box-shadow:0 2px 8px #00000008;margin-bottom:14px}
+.month-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.month-row button{border:0;background:#f3f6f4;border-radius:8px;padding:9px 13px;color:#315b50;font-size:20px}
+.month-title{font-size:20px;font-weight:bold;text-align:center}
+.today-button{display:block;margin:0 auto 12px;border:1px solid #d7e0da;background:white;border-radius:7px;padding:5px 12px;color:#315b50;font-size:13px}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid #e1e6e2;border-left:1px solid #e1e6e2}
+.weekday,.day{min-width:0;border-right:1px solid #e1e6e2;border-bottom:1px solid #e1e6e2}
+.weekday{text-align:center;padding:7px 0;font-size:12px;font-weight:bold;background:#f0f2f0}
+.weekday:first-child{color:#c34e4e}.weekday:last-child{color:#438bb8}
+.day{min-height:76px;padding:5px 3px;background:white;text-align:left;position:relative;color:#26372f;border-top:0;border-left:0}
+.day.outside{background:#f5f5f5;color:#a6aca8}.day.selected{background:#fff3d9;outline:2px solid #d99a35;outline-offset:-2px}
+.day.today .day-number{background:#315b50;color:white;border-radius:50%}
+.day-number{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;font-size:13px}
+.day-amount{display:block;margin-top:4px;text-align:right;font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+.income{color:#25845b}.expense{color:#c34e4e}.balance{color:#438bb8}
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:14px}
+.summary .card{padding:12px 5px;margin:0;text-align:center}
+.label{font-size:12px;color:#718078}.amount{margin-top:7px;font-size:17px;font-weight:bold;overflow-wrap:anywhere}
+h2{font-size:17px;margin:0 0 13px}.field{margin-bottom:13px}
+label{display:block;font-size:13px;margin-bottom:6px;color:#53645b}
+input,select{width:100%;min-width:0;padding:11px;border:1px solid #d7dfd9;border-radius:8px;background:white}
+.tabs button{padding:11px}
+.primary{width:100%;border:0;border-radius:9px;padding:13px;background:#315b50;color:white;font-weight:bold}
+.record{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #edf0ed}
+.record:last-child{border-bottom:0}.record-main{min-width:0}.record-title{font-weight:bold;overflow-wrap:anywhere}
+.record-sub{color:#718078;font-size:12px;margin-top:5px}.record-right{text-align:right;flex-shrink:0}
+.record-amount{font-weight:bold}.delete{display:block;margin:6px 0 0 auto;border:0;background:none;color:#a34a4a;font-size:12px}
+.empty{padding:18px 5px;text-align:center;color:#718078;font-size:14px}.small{color:#718078;font-size:12px;line-height:1.7}
+.hidden{display:none!important}
+.settings-list{margin-top:10px}.setting-item{border:1px solid #e3e9e4;border-radius:10px;padding:12px;margin:10px 0}.setting-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.setting-name{font-weight:bold}.setting-actions{display:flex;gap:8px;margin-top:10px}.setting-actions button,.secondary{border:1px solid #d7e0da;background:#fff;color:#315b50;border-radius:8px;padding:9px 12px}.setting-actions button.danger{color:#a34a4a}.status-note{padding:10px;border-radius:8px;background:#f3f6f4;font-size:13px;line-height:1.7;margin:10px 0}
+@media(max-width:560px){.nav{gap:5px}.nav button{font-size:12px;padding:11px 3px}}
+.budget-panel{padding:16px}.budget-panel h2{margin-bottom:8px}
+.budget-period{color:#718078;font-size:13px}.budget-remaining{font-size:28px;font-weight:bold;color:#25845b;margin:8px 0;overflow-wrap:anywhere}
+.budget-remaining.negative{color:#c34e4e}
+.forecast-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #edf0ed}
+.forecast-row:last-child{border-bottom:0}.forecast-date{font-weight:bold}
+.forecast-sub{color:#718078;font-size:12px;margin-top:4px}.forecast-amount{font-weight:bold;text-align:right;white-space:nowrap}.forecast-detail-toggle{display:block;margin-top:7px;padding:5px 8px;border:1px solid #d7e0da;border-radius:7px;background:#fff;color:#315b50;font-size:12px}.forecast-details{margin-top:8px;padding:8px;background:#f6f8f6;border-radius:8px}.forecast-detail-item{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #e5ebe6;font-size:12px}.forecast-detail-item:last-child{border-bottom:0}.forecast-detail-main{min-width:0;overflow-wrap:anywhere}.forecast-detail-amount{white-space:nowrap;font-weight:bold}
+.chart-row{margin:12px 0}.chart-label{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:5px}.bar-track{height:12px;background:#edf1ed;border-radius:99px;overflow:hidden}.bar-fill{height:100%;background:#4d8b70;border-radius:99px;min-width:0}.trend-row{display:grid;grid-template-columns:58px 1fr 82px;gap:8px;align-items:center;margin:13px 0;font-size:12px}.trend-bars{display:flex;flex-direction:column;gap:4px}.trend-income{height:7px;background:#6eae8b;border-radius:99px}.trend-expense{height:7px;background:#d97c7c;border-radius:99px}.trend-value{text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:560px){.nav{flex-wrap:wrap}.nav button{flex:1 1 calc(50% - 5px)}}
+@media(max-width:560px){main{padding:10px}.panel{padding:10px}.day{min-height:66px;padding:3px 1px}.day-number{width:22px;height:22px;font-size:12px}.day-amount{font-size:10px;letter-spacing:-.3px}.month-title{font-size:18px}.month-row button{padding:8px 11px}.amount{font-size:14px}}
+</style>
+</head>
+<body>
+<header><h1>わが家の家計簿</h1></header>
+<main>
+<nav class="nav">
+<button type="button" id="calendarTab" class="active">📅 カレンダー</button>
+<button type="button" id="inputTab">✏️ 入力・記録</button>
+<button type="button" id="summaryTab">📊 集計</button>
+<button type="button" id="settingsTab">⚙️ 固定費</button>
+</nav>
+<section id="calendarPage">
+<div class="panel">
+<div class="month-row">
+<button type="button" id="prevMonth" aria-label="前の月">‹</button>
+<div class="month-title" id="monthTitle"></div>
+<button type="button" id="nextMonth" aria-label="次の月">›</button>
+</div>
+<button type="button" class="today-button" id="goToday">今月に戻る</button>
+<div class="budget-panel">
+<h2>次のお小遣い日まで</h2>
+<div class="budget-period" id="budgetPeriod"></div>
+<div class="budget-remaining" id="budgetRemaining">30,000円</div>
+<div class="small" id="budgetDetail"></div>
+</div>
+<div class="budget-panel">
+<h2>これからのカード引き落とし予定</h2>
+<div id="cardForecast"></div>
+<div class="small">金額を押す代わりに「利用明細を表示」を押すと、予定額に含まれる買い物を確認できるよ。買い物は購入日に支出として計上し、ここで二重計上はしないよ。</div>
+</div>
+<div class="calendar" id="calendar"></div>
+<div class="summary">
+<div class="card"><div class="label">収入</div><div class="amount income" id="incomeTotal">0円</div></div>
+<div class="card"><div class="label">支出</div><div class="amount expense" id="expenseTotal">0円</div></div>
+<div class="card"><div class="label">収支</div><div class="amount balance" id="balanceTotal">0円</div></div>
+</div>
+</div>
+<div class="panel">
+<h2 id="selectedTitle">選択した日の記録</h2>
+<div id="dayRecords"></div>
+<button type="button" class="primary" id="addForDay">この日付で入力する</button>
+</div>
+</section>
+<section id="inputPage" class="hidden">
+<div class="panel">
+<h2>収入・支出を登録</h2>
+<div class="tabs">
+<button type="button" id="expenseTab" class="active">支出を入力</button>
+<button type="button" id="incomeTab">収入を入力</button>
+</div>
+<form id="entryForm">
+<div class="field"><label for="date">日付</label><input id="date" type="date" required></div>
+<div class="field"><label for="amount">金額（円）</label><input id="amount" type="number" min="1" step="1" placeholder="例：1200" required></div>
+<div class="field"><label for="category">カテゴリ</label><select id="category" required></select></div>
+<div class="field"><label for="method">支払い方法・受取方法</label>
+<select id="method"><option>現金</option><option>Mastercard</option><option>PayPay</option><option>銀行振込</option><option>その他</option></select></div>
+<div class="field"><label for="memo">メモ（任意）</label><input id="memo" type="text" maxlength="100" placeholder="例：スーパーで買い物"></div>
+<button class="primary" type="submit">記録を保存する</button>
+</form>
+</div>
+<div class="panel"><h2>選択月の記録一覧</h2><div id="allRecords"></div></div>
+</section>
+<section id="summaryPage" class="hidden">
+<div class="panel">
+<div class="month-row"><button type="button" id="summaryPrev" aria-label="前の月">‹</button><div class="month-title" id="summaryMonthTitle"></div><button type="button" id="summaryNext" aria-label="次の月">›</button></div>
+<p class="small">選択した月（1日〜月末）の収入・支出をまとめて確認できるよ。カードの引き落とし予定はカレンダーで確認してね。</p>
+<div class="summary">
+<div class="card"><div class="label">収入</div><div class="amount income" id="summaryIncome">0円</div></div>
+<div class="card"><div class="label">支出</div><div class="amount expense" id="summaryExpense">0円</div></div>
+<div class="card"><div class="label">収支</div><div class="amount balance" id="summaryBalance">0円</div></div>
+</div>
+</div>
+<div class="panel"><h2>カテゴリ別の支出</h2><div id="categoryChart"></div><p class="small">金額が大きいカテゴリほどバーが長くなるよ。</p></div>
+<div class="panel"><h2>直近6か月の収支（通常の月）</h2><div id="trendChart"></div><div class="small">このグラフは常に1日〜月末の暦月で集計するよ。上のバーが収入、下のバーが支出。</div></div>
+</section>
+<section id="settingsPage" class="hidden">
+<div class="panel">
+<h2>毎月の固定費を自動登録</h2>
+<p class="small">登録した固定費は、設定した日になると支出に自動追加されるよ。アプリを閉じている間は動かないので、次に開いたときに未登録分を補う仕組みだよ。登録した月より前の分は勝手に追加しないよ。</p>
+<form id="fixedForm">
+<div class="field"><label for="fixedName">固定費の名前</label><input id="fixedName" maxlength="60" placeholder="例：猫砂、子どもの保険" required></div>
+<div class="field"><label for="fixedAmount">金額（円）</label><input id="fixedAmount" type="number" min="1" step="1" placeholder="例：2500" required></div>
+<div class="field"><label for="fixedCategory">カテゴリ</label><select id="fixedCategory"><option>日用品</option><option>猫費</option><option>子ども費</option><option>住居費</option><option>水道・光熱費</option><option>通信費</option><option>保険</option><option>サブスク</option><option>その他</option></select></div>
+<div class="field"><label for="fixedMethod">支払い方法</label><select id="fixedMethod"><option>現金</option><option>Mastercard</option><option>PayPay</option><option>銀行振込</option><option>その他</option></select></div>
+<div class="field"><label for="fixedDay">毎月の登録日</label><select id="fixedDay"></select></div>
+<button class="primary" type="submit">固定費を追加する</button>
+</form>
+<div class="settings-list" id="fixedList"></div>
+</div>
+<div class="panel"><h2>カードの締め日・支払日</h2>
+<p class="small">ここで設定した日付を使って、カレンダーの引き落とし予定を計算するよ。一般的な設定が初期値になっているので、カード会社の実際の条件と違う場合は明細や会員ページで確認して変更してね。</p>
+<form id="cardSettingsForm">
+<h3 style="font-size:15px;margin:14px 0 8px">Mastercard</h3>
+<div class="field"><label for="mcClosingDay">締め日</label><select id="mcClosingDay"></select></div>
+<div class="field"><label for="mcPaymentDay">支払日</label><select id="mcPaymentDay"></select></div>
+<h3 style="font-size:15px;margin:14px 0 8px">PayPayカード</h3>
+<div class="field"><label for="ppClosingDay">締め日</label><select id="ppClosingDay"></select></div>
+<div class="field"><label for="ppPaymentDay">支払日</label><select id="ppPaymentDay"></select></div>
+<button class="primary" type="submit">カード設定を保存する</button>
+</form>
+<div class="status-note" id="cardSettingsStatus">初期設定：Mastercardは15日締め・翌月/翌々月10日払い、PayPayカードは月末締め・翌月27日払い。</div>
+</div>
+<div class="panel"><h2>お小遣いの自動登録</h2><div class="status-note" id="allowanceStatus"></div><p class="small">毎月20日に「お小遣い 30,000円」を収入に登録するよ。アプリを閉じている間に登録日を過ぎた場合は、次に開いたときに補うよ。重複登録はしない仕組みだよ。</p>
+<div class="field"><label for="testDate">動作確認用の日付（確認だけ・記録は追加しない）</label><input id="testDate" type="date"></div><button type="button" class="secondary" id="checkTestDate">この日付で動作を確認</button><div class="status-note" id="testResult">日付を選んで確認できるよ。</div>
+</div>
+<div class="panel" id="backupPanel"><h2>バックアップ・復元</h2><p class="small">家計簿の記録と固定費の設定を、ひとつのファイルに保存できるよ。機種変更やブラウザのデータ削除に備えて、ときどきバックアップしてね。バックアップファイルには家計簿の個人データが入るので、安全な場所に保管してね。</p>
+<button type="button" class="primary" id="downloadBackup">バックアップを保存する</button>
+<div class="field" style="margin-top:16px"><label for="restoreFile">バックアップファイルを選択（JSON）</label><input id="restoreFile" type="file" accept=".json,application/json"></div>
+<button type="button" class="secondary" id="restoreBackup">選んだファイルから復元する</button>
+<div class="status-note" id="backupStatus">復元すると、現在の記録と固定費設定がバックアップの内容に置き換わるよ。復元前に、今のデータもバックアップしておくのがおすすめ。</div>
+</div>
+</section>
+<div class="panel"><p class="small">記録はこのブラウザ内に保存されるよ。ブラウザのデータ削除や端末の故障に備えて、家計簿ファイルと保存データのバックアップを取っておくと安心だよ。パソコンとスマホの同期には、別途仕組みが必要だよ。</p></div>
+</main>
+<script>
+const STORAGE_KEY = "my-kakeibo-records-v1";
+const FIXED_KEY = "my-kakeibo-fixed-costs-v1";
+const FIXED_START_KEY = "my-kakeibo-fixed-start-v1";
+const CARD_SETTINGS_KEY = "my-kakeibo-card-settings-v1";
+const DEFAULT_CARD_SETTINGS = { mastercardClosingDay: 15, mastercardPaymentDay: 10, paypayClosingDay: 31, paypayPaymentDay: 27 };
+let cardSettings = { ...DEFAULT_CARD_SETTINGS };
+try {
+  const savedCardSettings = localStorage.getItem(CARD_SETTINGS_KEY);
+  if (savedCardSettings) cardSettings = { ...DEFAULT_CARD_SETTINGS, ...JSON.parse(savedCardSettings) };
+} catch (e) { cardSettings = { ...DEFAULT_CARD_SETTINGS }; }
+function saveCardSettings() {
+  try { localStorage.setItem(CARD_SETTINGS_KEY, JSON.stringify(cardSettings)); return true; }
+  catch (e) { alert("カード設定を保存できなかったよ。"); return false; }
+}
+let fixedCosts = [];
+try { const raw=localStorage.getItem(FIXED_KEY); fixedCosts=raw?JSON.parse(raw):[]; if(!Array.isArray(fixedCosts))fixedCosts=[]; } catch(e) { fixedCosts=[]; }
+const $ = id => document.getElementById(id);
+let type = "expense";
+let records = [];
+let viewMonth = localDateString().slice(0, 7);
+let selectedDate = localDateString();
+
+try {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  records = saved ? JSON.parse(saved) : [];
+  if (!Array.isArray(records)) records = [];
+} catch (error) {
+  records = [];
+  alert("保存データを読み込めなかったよ。ブラウザのデータを消さずに相談してね。");
+}
+function localDateString(date = new Date()) {
+  const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,"0"), d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function yen(value) { return new Intl.NumberFormat("ja-JP").format(value) + "円"; }
+function saveRecords() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); return true; }
+  catch(error) { alert("保存できなかったよ。ブラウザの空き容量などを確認してね。"); return false; }
+}
+function categories() {
+  return type === "expense"
+    ? ["食費","日用品","猫費","子ども費","住居費","水道・光熱費","通信費","保険","交通費","医療費","娯楽費","サブスク","その他"]
+    : ["お小遣い","給与","臨時収入","返金","その他"];
+}
+function updateCategories() {
+  $("category").innerHTML = "";
+  categories().forEach(name => { const option=document.createElement("option"); option.value=name; option.textContent=name; $("category").appendChild(option); });
+  $("method").options[0].textContent = type === "expense" ? "現金" : "現金で受取";
+}
+function setType(nextType) {
+  type=nextType;
+  $("expenseTab").classList.toggle("active",type==="expense");
+  $("incomeTab").classList.toggle("active",type==="income");
+  $("expenseTab").textContent=type==="expense"?"● 支出を入力":"支出を入力";
+  $("incomeTab").textContent=type==="income"?"● 収入を入力":"収入を入力";
+  updateCategories();
+}
+function showPage(page) {
+  const calendar=page==="calendar", input=page==="input", settings=page==="settings", summary=page==="summary";
+  $("calendarPage").classList.toggle("hidden",!calendar);
+  $("inputPage").classList.toggle("hidden",!input);
+  $("settingsPage").classList.toggle("hidden",!settings);
+  $("summaryPage").classList.toggle("hidden",!summary);
+  $("calendarTab").classList.toggle("active",calendar);
+  $("inputTab").classList.toggle("active",input);
+  $("settingsTab").classList.toggle("active",settings);
+  $("summaryTab").classList.toggle("active",summary);
+  if(input) $("date").value=selectedDate;
+  if(settings) renderFixedCosts();
+  if(summary) renderSummary();
+}
+function deleteRecord(id) {
+  if(!confirm("この記録を削除していい？")) return;
+  const previous=records;
+  records=records.filter(r=>r.id!==id);
+  if(!saveRecords()){records=previous;return;}
+  renderAll();
+}
+function makeRecord(record) {
+  const row=document.createElement("div"); row.className="record";
+  const main=document.createElement("div"); main.className="record-main";
+  const title=document.createElement("div"); title.className="record-title"; title.textContent=record.category+(record.memo?" ・ "+record.memo:"");
+  const sub=document.createElement("div"); sub.className="record-sub"; sub.textContent=`${record.date} ｜ ${record.method} ｜ ${record.type==="income"?"収入":"支出"}`;
+  main.append(title,sub);
+  const right=document.createElement("div"); right.className="record-right";
+  const amount=document.createElement("div"); amount.className="record-amount "+record.type; amount.textContent=(record.type==="income"?"+":"−")+yen(Number(record.amount));
+  const del=document.createElement("button"); del.type="button"; del.className="delete"; del.textContent="削除"; del.addEventListener("click",()=>deleteRecord(record.id));
+  right.append(amount,del); row.append(main,right); return row;
+}
+function renderCalendar() {
+  const [year,month]=viewMonth.split("-").map(Number);
+  $("monthTitle").textContent=`${year}年${month}月`;
+  const calendar=$("calendar"); calendar.innerHTML="";
+  ["月","火","水","木","金","土","日"].forEach(day=>{const cell=document.createElement("div");cell.className="weekday";cell.textContent=day;calendar.appendChild(cell);});
+  const first=new Date(year,month-1,1), offset=(first.getDay()+6)%7, start=new Date(year,month-1,1-offset), today=localDateString();
+  for(let i=0;i<42;i++){
+    const date=new Date(start); date.setDate(start.getDate()+i);
+    const key=localDateString(date), sameMonth=key.slice(0,7)===viewMonth;
+    const dayRecords=records.filter(r=>r.date===key);
+    const income=dayRecords.filter(r=>r.type==="income").reduce((sum,r)=>sum+Number(r.amount||0),0);
+    const expense=dayRecords.filter(r=>r.type==="expense").reduce((sum,r)=>sum+Number(r.amount||0),0);
+    const cell=document.createElement("button"); cell.type="button"; cell.className="day";
+    if(!sameMonth)cell.classList.add("outside"); if(key===selectedDate)cell.classList.add("selected"); if(key===today)cell.classList.add("today");
+    cell.setAttribute("aria-label",`${key} 収入${income}円 支出${expense}円`);
+    const number=document.createElement("span"); number.className="day-number"; number.textContent=date.getDate(); cell.appendChild(number);
+    if(income>0){const amount=document.createElement("span");amount.className="day-amount income";amount.textContent="+"+income.toLocaleString("ja-JP");cell.appendChild(amount);}
+    if(expense>0){const amount=document.createElement("span");amount.className="day-amount expense";amount.textContent="−"+expense.toLocaleString("ja-JP");cell.appendChild(amount);}
+    cell.addEventListener("click",()=>{selectedDate=key;if(!sameMonth)viewMonth=key.slice(0,7);renderAll();});
+    calendar.appendChild(cell);
+  }
+  const monthly=records.filter(r=>r.date.startsWith(viewMonth));
+  const income=monthly.filter(r=>r.type==="income").reduce((sum,r)=>sum+Number(r.amount||0),0);
+  const expense=monthly.filter(r=>r.type==="expense").reduce((sum,r)=>sum+Number(r.amount||0),0);
+  $("incomeTotal").textContent=yen(income); $("expenseTotal").textContent=yen(expense);
+  $("balanceTotal").textContent=yen(income-expense);
+  $("balanceTotal").className="amount "+(income-expense<0?"expense":"balance");
+}
+function renderDayRecords() {
+  const container=$("dayRecords"); container.innerHTML="";
+  $("selectedTitle").textContent=`${Number(selectedDate.slice(5,7))}月${Number(selectedDate.slice(8,10))}日の記録`;
+  const shown=records.filter(r=>r.date===selectedDate).sort((a,b)=>String(b.id).localeCompare(String(a.id)));
+  if(!shown.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="この日の記録はまだないよ。";container.appendChild(empty);return;}
+  shown.forEach(r=>container.appendChild(makeRecord(r)));
+}
+function renderAllRecords() {
+  const container=$("allRecords");container.innerHTML="";
+  const shown=records.filter(r=>r.date.startsWith(viewMonth)).sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id)));
+  if(!shown.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="この月の記録はまだないよ。";container.appendChild(empty);return;}
+  shown.forEach(r=>container.appendChild(makeRecord(r)));
+}
+function dateKey(year,monthIndex,day){return localDateString(new Date(year,monthIndex,day));}
+function addMonths(year,monthIndex,amount){return new Date(year,monthIndex+amount,1);}
+
+// カード設定に基づいて利用日から支払日を計算する。
+// 締め日までの利用は翌月、締め日を過ぎた利用は翌々月の支払いとして扱う。
+function cardPaymentDate(dateString, closingDay, paymentDay) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const offset = day <= Number(closingDay) ? 1 : 2;
+  return monthDate(year, month + offset, Number(paymentDay));
+}
+function mastercardPaymentDate(dateString) {
+  return cardPaymentDate(dateString, cardSettings.mastercardClosingDay, cardSettings.mastercardPaymentDay);
+}
+function paypayPaymentDate(dateString) {
+  return cardPaymentDate(dateString, cardSettings.paypayClosingDay, cardSettings.paypayPaymentDay);
+}
+function renderBudget() {
+  const today=new Date(), year=today.getFullYear(), month=today.getMonth(), day=today.getDate();
+  const start=day>=20?dateKey(year,month,20):dateKey(year,month-1,20);
+  const nextAllowance=day<20?dateKey(year,month,20):dateKey(year,month+1,20);
+  const end=localDateString(new Date(Number(nextAllowance.slice(0,4)),Number(nextAllowance.slice(5,7))-1,19));
+  const expenses=records.filter(r=>r.type==="expense"&&r.date>=start&&r.date<=end).reduce((sum,r)=>sum+Number(r.amount||0),0);
+  const remaining=30000-expenses;
+  const nextDate=new Date(Number(nextAllowance.slice(0,4)),Number(nextAllowance.slice(5,7))-1,Number(nextAllowance.slice(8,10)));
+  const daysLeft=Math.round((nextDate-new Date(year,month,day))/86400000);
+  $("budgetPeriod").textContent=`${start.replaceAll("-","/")} ～ ${end.replaceAll("-","/")}`;
+  $("budgetRemaining").textContent=yen(remaining); $("budgetRemaining").classList.toggle("negative",remaining<0);
+  $("budgetDetail").textContent=`期間中の支出 ${yen(expenses)} ／ 次のお小遣いまであと${daysLeft}日`;
+}
+function renderCardForecast() {
+  const container=$("cardForecast"); container.innerHTML="";
+  const today=localDateString(), now=new Date(), forecast=[];
+  // 先6か月分の設定済み支払日を作る
+  for(let i=0;i<6;i++){
+    const month=addMonths(now.getFullYear(),now.getMonth(),i), year=month.getFullYear(), monthIndex=month.getMonth();
+    const mastercardDate=monthDate(year,monthIndex+1,Number(cardSettings.mastercardPaymentDay));
+    const paypayDate=monthDate(year,monthIndex+1,Number(cardSettings.paypayPaymentDay));
+    if(mastercardDate>=today)forecast.push({date:mastercardDate,name:"Mastercard",method:"mastercard",amount:0,records:[]});
+    if(paypayDate>=today)forecast.push({date:paypayDate,name:"PayPayカード",method:"paypay",amount:0,records:[]});
+  }
+  records.forEach(record=>{
+    if(record.type!=="expense")return;
+    let paymentDate=null,method=null;
+    if(record.method==="Mastercard"){paymentDate=mastercardPaymentDate(record.date);method="mastercard";}
+    else if(record.method==="PayPay"||record.method==="PayPay（カード払い）"){paymentDate=paypayPaymentDate(record.date);method="paypay";}
+    const item=forecast.find(f=>f.date===paymentDate&&f.method===method);
+    if(item){item.amount+=Number(record.amount||0);item.records.push(record);}
+  });
+  forecast.sort((a,b)=>a.date.localeCompare(b.date));
+  const upcoming=forecast.slice(0,4);
+  if(!upcoming.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="今後の引き落とし予定はないよ。";container.appendChild(empty);return;}
+  upcoming.forEach((item,index)=>{
+    const wrap=document.createElement("div");
+    const row=document.createElement("div");row.className="forecast-row";
+    const left=document.createElement("div"),dateText=document.createElement("div");dateText.className="forecast-date";
+    dateText.textContent=`${Number(item.date.slice(5,7))}月${Number(item.date.slice(8,10))}日（${item.name}）`;
+    const detail=document.createElement("div");detail.className="forecast-sub";detail.textContent=item.records.length===0?"対象となる利用記録なし":`利用記録 ${item.records.length}件`;
+    left.append(dateText,detail);
+    const right=document.createElement("div");right.className="forecast-amount";right.textContent=yen(item.amount);
+    row.append(left,right);wrap.appendChild(row);
+    const toggle=document.createElement("button");toggle.type="button";toggle.className="forecast-detail-toggle";toggle.textContent="利用明細を表示";
+    const details=document.createElement("div");details.className="forecast-details hidden";
+    if(!item.records.length){const empty=document.createElement("div");empty.className="small";empty.textContent="この引き落とし予定に含まれる利用記録はまだないよ。実際の請求額とは異なる場合があるよ。";details.appendChild(empty);}
+    else {
+      item.records.sort((a,b)=>a.date.localeCompare(b.date)).forEach(record=>{
+        const line=document.createElement("div");line.className="forecast-detail-item";
+        const main=document.createElement("div");main.className="forecast-detail-main";
+        const date=document.createElement("div");date.textContent=record.date.replaceAll("-","/");
+        const sub=document.createElement("div");sub.className="forecast-sub";sub.textContent=[record.category||"カテゴリなし",record.memo||"メモなし"].join(" · ");
+        main.append(date,sub);
+        const amount=document.createElement("div");amount.className="forecast-detail-amount";amount.textContent=yen(Number(record.amount||0));
+        line.append(main,amount);details.appendChild(line);
+      });
+      const note=document.createElement("div");note.className="small";note.style.marginTop="8px";note.textContent="登録済みの利用記録を合計した予測額だよ。未登録の買い物やカード会社側の調整額は含まれないよ。";details.appendChild(note);
+    }
+    toggle.addEventListener("click",()=>{const opening=details.classList.contains("hidden");details.classList.toggle("hidden",!opening);toggle.textContent=opening?"利用明細を閉じる":"利用明細を表示";});
+    wrap.append(toggle,details);container.appendChild(wrap);
+  });
+}
+// 毎月20日にお小遣い30,000円を自動登録する。
+// HTMLアプリは閉じている間に処理できないため、起動時に未登録分を補完する。
+const AUTO_ALLOWANCE_START_KEY = "my-kakeibo-auto-allowance-start-v1";
+const AUTO_ALLOWANCE_PREFIX = "auto-allowance-";
+function monthKey(dateString) { return dateString.slice(0,7); }
+function addMonthlyAllowanceIfNeeded() {
+  const today = localDateString();
+  const currentMonth = monthKey(today);
+  let startMonth = localStorage.getItem(AUTO_ALLOWANCE_START_KEY);
+  if (!startMonth) {
+    // この機能を入れた月から登録を開始し、過去分を勝手に作らない。
+    startMonth = currentMonth;
+    localStorage.setItem(AUTO_ALLOWANCE_START_KEY, startMonth);
+  }
+  const [startYear, startMonthNumber] = startMonth.split("-").map(Number);
+  const [todayYear, todayMonthNumber] = currentMonth.split("-").map(Number);
+  let cursor = new Date(startYear, startMonthNumber - 1, 1);
+  const last = new Date(todayYear, todayMonthNumber - 1, 1);
+  let changed = false;
+  while (cursor <= last) {
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, "0");
+    const key = `${y}-${m}`;
+    const allowanceDate = `${key}-20`;
+    if (today >= allowanceDate) {
+      const autoId = AUTO_ALLOWANCE_PREFIX + key;
+      const alreadyExists = records.some(r => r.autoKey === autoId || r.id === autoId);
+      if (!alreadyExists) {
+        records.push({
+          id: autoId,
+          autoKey: autoId,
+          type: "income",
+          date: allowanceDate,
+          amount: 30000,
+          category: "お小遣い",
+          method: "銀行振込",
+          memo: "毎月のお小遣い（自動登録）"
+        });
+        changed = true;
+      }
+    }
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  if (changed) saveRecords();
+}
+function setupCardDayOptions() {
+  ["mcClosingDay","mcPaymentDay","ppClosingDay","ppPaymentDay"].forEach(id=>{
+    const select=$(id); select.innerHTML="";
+    for(let day=1;day<=31;day++){const option=document.createElement("option");option.value=String(day);option.textContent=day===31?"月末（31日）":`${day}日`;select.appendChild(option);}
+  });
+  $("mcClosingDay").value=String(cardSettings.mastercardClosingDay);
+  $("mcPaymentDay").value=String(cardSettings.mastercardPaymentDay);
+  $("ppClosingDay").value=String(cardSettings.paypayClosingDay);
+  $("ppPaymentDay").value=String(cardSettings.paypayPaymentDay);
+  updateCardSettingsStatus();
+}
+function updateCardSettingsStatus() {
+  $("cardSettingsStatus").textContent=`現在の設定：Mastercard ${cardSettings.mastercardClosingDay===31?"月末":cardSettings.mastercardClosingDay+"日"}締め・${cardSettings.mastercardPaymentDay}日払い ／ PayPayカード ${cardSettings.paypayClosingDay===31?"月末":cardSettings.paypayClosingDay+"日"}締め・${cardSettings.paypayPaymentDay}日払い。利用日から支払日を計算するよ。`;
+}
+function saveFixedCosts(){try{localStorage.setItem(FIXED_KEY,JSON.stringify(fixedCosts));return true}catch(e){alert("固定費の設定を保存できなかったよ。");return false;}}
+function renderFixedCosts(){
+ const list=$("fixedList");list.innerHTML="";
+ if(!fixedCosts.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="固定費はまだ登録されていないよ。";list.appendChild(empty);}
+ fixedCosts.forEach(item=>{const card=document.createElement("div");card.className="setting-item";const top=document.createElement("div");top.className="setting-top";const left=document.createElement("div");left.innerHTML="";const name=document.createElement("div");name.className="setting-name";name.textContent=item.name+(item.enabled?"":"（停止中）");const detail=document.createElement("div");detail.className="record-sub";detail.textContent=`${yen(item.amount)}／毎月${item.day}日／${item.category}／${item.method}`;left.append(name,detail);top.appendChild(left);card.appendChild(top);const actions=document.createElement("div");actions.className="setting-actions";const toggle=document.createElement("button");toggle.type="button";toggle.textContent=item.enabled?"自動登録を停止":"自動登録を再開";toggle.addEventListener("click",()=>{item.enabled=!item.enabled;saveFixedCosts();renderFixedCosts();processFixedCosts();renderAll();});const del=document.createElement("button");del.type="button";del.className="danger";del.textContent="削除";del.addEventListener("click",()=>{if(!confirm(`「${item.name}」の設定を削除する？過去に登録された支出記録は残るよ。`))return;fixedCosts=fixedCosts.filter(x=>x.id!==item.id);saveFixedCosts();renderFixedCosts();});actions.append(toggle,del);card.appendChild(actions);list.appendChild(card);});
+ const today=localDateString();$("allowanceStatus").textContent=today.slice(8,10)>="20"?"今月20日分のお小遣いは、起動時に自動登録の対象になるよ（すでに登録済みなら重複しないよ）。":"今月20日より前なので、今月分はまだ登録されないよ。20日以降にアプリを開くと登録されるよ。";
+}
+function monthStart(date){return date.slice(0,7);}
+function monthDate(y,m,day){const last=new Date(y,m,0).getDate();return `${y}-${String(m).padStart(2,"0")}-${String(Math.min(day,last)).padStart(2,"0")}`;}
+function processFixedCosts(){const today=localDateString();let changed=false;fixedCosts.forEach(item=>{if(!item.enabled)return;let cursor=item.startMonth||monthStart(today);const [sy,sm]=cursor.split("-").map(Number);const [ty,tm]=monthStart(today).split("-").map(Number);let d=new Date(sy,sm-1,1);const last=new Date(ty,tm-1,1);while(d<=last){const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const due=monthDate(d.getFullYear(),d.getMonth()+1,Number(item.day));const autoKey=`fixed-${item.id}-${key}`;if(due<=today&&!records.some(r=>r.autoKey===autoKey)){records.push({id:autoKey,autoKey,type:"expense",date:due,amount:Number(item.amount),category:item.category,method:item.method,memo:`固定費：${item.name}`});changed=true;}d.setMonth(d.getMonth()+1);}});if(changed)saveRecords();}
+function setupFixedDayOptions(){for(let i=1;i<=31;i++){const o=document.createElement("option");o.value=String(i);o.textContent=`${i}日`;if(i===1)o.selected=true;$("fixedDay").appendChild(o);}}
+function renderSummary(){
+ const [year,month]=viewMonth.split("-").map(Number);
+ const startDate=`${year}-${String(month).padStart(2,"0")}-01`;
+ const endDate=monthDate(year,month,new Date(year,month,0).getDate());
+ $("summaryMonthTitle").textContent=`${year}年${month}月`;
+ const monthly=records.filter(r=>typeof r.date==="string"&&r.date>=startDate&&r.date<=endDate);
+ const income=monthly.filter(r=>r.type==="income").reduce((a,r)=>a+Number(r.amount||0),0);
+ const expense=monthly.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amount||0),0);
+ $("summaryIncome").textContent=yen(income);$("summaryExpense").textContent=yen(expense);$("summaryBalance").textContent=yen(income-expense);
+ const totals={};monthly.filter(r=>r.type==="expense").forEach(r=>{const k=r.category||"その他";totals[k]=(totals[k]||0)+Number(r.amount||0);});
+ const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);const root=$("categoryChart");root.replaceChildren();
+ if(!sorted.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="この月の支出記録はまだないよ。";root.appendChild(empty);}else{const max=sorted[0][1]||1;sorted.forEach(([name,value])=>{const row=document.createElement("div");row.className="chart-row";const label=document.createElement("div");label.className="chart-label";const n=document.createElement("span");n.textContent=name;const v=document.createElement("strong");v.textContent=yen(value);label.append(n,v);const track=document.createElement("div");track.className="bar-track";const fill=document.createElement("div");fill.className="bar-fill";fill.style.width=(value/max*100)+"%";track.appendChild(fill);row.append(label,track);root.appendChild(row);});}
+ const months=[];for(let i=5;i>=0;i--){const d=new Date(year,month-1-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}const values=months.map(m=>{const rs=records.filter(r=>r.date&&r.date.slice(0,7)===m);return{month:m,income:rs.filter(r=>r.type==="income").reduce((a,r)=>a+Number(r.amount||0),0),expense:rs.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amount||0),0)};});const maxVal=Math.max(1,...values.flatMap(v=>[v.income,v.expense]));const trend=$("trendChart");trend.replaceChildren();values.forEach(v=>{const row=document.createElement("div");row.className="trend-row";const label=document.createElement("div");label.textContent=v.month.slice(2).replace("-","/");const bars=document.createElement("div");bars.className="trend-bars";const inc=document.createElement("div");inc.className="trend-income";inc.style.width=(v.income/maxVal*100)+"%";inc.title="収入 "+yen(v.income);const exp=document.createElement("div");exp.className="trend-expense";exp.style.width=(v.expense/maxVal*100)+"%";exp.title="支出 "+yen(v.expense);bars.append(inc,exp);const val=document.createElement("div");val.className="trend-value";val.textContent=(v.income-v.expense>=0?"+":"")+yen(v.income-v.expense);row.append(label,bars,val);trend.appendChild(row);});
+}
+function renderAll(){renderCalendar();renderDayRecords();renderAllRecords();renderBudget();renderCardForecast();}
+
+// 記録・固定費設定・自動登録の開始月をまとめてバックアップする。
+function downloadBackupFile(){
+ const data={app:"waga-kakeibo",version:1,createdAt:new Date().toISOString(),records,fixedCosts,settings:{allowanceStartMonth:localStorage.getItem(AUTO_ALLOWANCE_START_KEY)||null,fixedStart:localStorage.getItem(FIXED_START_KEY)||null,cardSettings}};
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);const a=document.createElement("a");
+ a.href=url;a.download=`waga-kakeibo-backup-${localDateString()}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ $("backupStatus").textContent=`バックアップを作成したよ（記録${records.length}件・固定費${fixedCosts.length}件）。ダウンロードしたファイルがあるか確認してね。`;
+}
+function restoreBackupFile(){
+ const file=$("restoreFile").files[0];if(!file){alert("先にバックアップファイルを選んでね。");return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  let data;try{data=JSON.parse(String(reader.result));}catch(e){alert("ファイルを読み取れなかったよ。JSON形式のバックアップか確認してね。");return;}
+  const validRecord=r=>r&&typeof r==="object"&&typeof r.id==="string"&&["income","expense"].includes(r.type)&&/^\d{4}-\d{2}-\d{2}$/.test(r.date)&&Number.isSafeInteger(Number(r.amount))&&Number(r.amount)>0&&typeof r.category==="string"&&typeof r.method==="string";
+  const validFixed=f=>f&&typeof f==="object"&&typeof f.id==="string"&&typeof f.name==="string"&&Number.isSafeInteger(Number(f.amount))&&Number(f.amount)>0&&Number.isInteger(Number(f.day))&&Number(f.day)>=1&&Number(f.day)<=31&&typeof f.category==="string"&&typeof f.method==="string"&&typeof f.enabled==="boolean";
+  if(!data||data.app!=="waga-kakeibo"||data.version!==1||!Array.isArray(data.records)||!Array.isArray(data.fixedCosts)||!data.records.every(validRecord)||!data.fixedCosts.every(validFixed)){
+   alert("このファイルは対応する家計簿バックアップではないか、データ形式が正しくないよ。現在のデータは変更していないよ。");return;
+  }
+  if(!confirm(`バックアップから復元する？\n記録：${data.records.length}件\n固定費：${data.fixedCosts.length}件\n\n現在の記録と固定費設定は置き換わるよ。復元前に今のデータをバックアップしておくのがおすすめ。`))return;
+  try{
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(data.records));
+   localStorage.setItem(FIXED_KEY,JSON.stringify(data.fixedCosts));
+   if(data.settings&&data.settings.allowanceStartMonth)localStorage.setItem(AUTO_ALLOWANCE_START_KEY,data.settings.allowanceStartMonth);else localStorage.removeItem(AUTO_ALLOWANCE_START_KEY);
+   if(data.settings&&data.settings.fixedStart)localStorage.setItem(FIXED_START_KEY,data.settings.fixedStart);else localStorage.removeItem(FIXED_START_KEY);
+   cardSettings = { ...DEFAULT_CARD_SETTINGS, ...(data.settings&&data.settings.cardSettings ? data.settings.cardSettings : {}) };
+   localStorage.setItem(CARD_SETTINGS_KEY, JSON.stringify(cardSettings));
+   records=data.records;fixedCosts=data.fixedCosts;viewMonth=localDateString().slice(0,7);selectedDate=localDateString();setupCardDayOptions();renderAll();renderFixedCosts();
+   $("backupStatus").textContent=`復元できたよ。記録${records.length}件・固定費${fixedCosts.length}件を読み込んだよ。`;
+   alert("復元できたよ！");
+  }catch(e){alert("保存中にエラーが起きたよ。ブラウザの保存容量などを確認してね。必要ならページを閉じずに相談してね。");}
+ };
+ reader.onerror=()=>alert("ファイルを読み取れなかったよ。");reader.readAsText(file);
+}
+
+$("cardSettingsForm").addEventListener("submit",event=>{
+ event.preventDefault();
+ const previous={...cardSettings};
+ cardSettings={mastercardClosingDay:Number($("mcClosingDay").value),mastercardPaymentDay:Number($("mcPaymentDay").value),paypayClosingDay:Number($("ppClosingDay").value),paypayPaymentDay:Number($("ppPaymentDay").value)};
+ if(!saveCardSettings()){cardSettings=previous;setupCardDayOptions();return;}
+ updateCardSettingsStatus();renderCardForecast();alert("カードの締め日・支払日を保存したよ。カレンダーの引き落とし予定に反映したよ。");
+});
+$("downloadBackup").addEventListener("click",downloadBackupFile);
+$("restoreBackup").addEventListener("click",restoreBackupFile);
+
+$("calendarTab").addEventListener("click",()=>showPage("calendar"));
+$("settingsTab").addEventListener("click",()=>showPage("settings"));
+$("inputTab").addEventListener("click",()=>showPage("input"));
+$("summaryTab").addEventListener("click",()=>showPage("summary"));
+
+$("summaryPrev").addEventListener("click",()=>{const[y,m]=viewMonth.split("-").map(Number);viewMonth=localDateString(new Date(y,m-2,1)).slice(0,7);renderSummary();});
+$("summaryNext").addEventListener("click",()=>{const[y,m]=viewMonth.split("-").map(Number);viewMonth=localDateString(new Date(y,m,1)).slice(0,7);renderSummary();});
+$("prevMonth").addEventListener("click",()=>{const[y,m]=viewMonth.split("-").map(Number);viewMonth=localDateString(new Date(y,m-2,1)).slice(0,7);selectedDate=viewMonth+"-01";renderAll();});
+$("nextMonth").addEventListener("click",()=>{const[y,m]=viewMonth.split("-").map(Number);viewMonth=localDateString(new Date(y,m,1)).slice(0,7);selectedDate=viewMonth+"-01";renderAll();});
+$("goToday").addEventListener("click",()=>{viewMonth=localDateString().slice(0,7);selectedDate=localDateString();renderAll();});
+$("addForDay").addEventListener("click",()=>{$("date").value=selectedDate;showPage("input");});
+$("expenseTab").addEventListener("click",()=>setType("expense"));
+$("incomeTab").addEventListener("click",()=>setType("income"));
+$("fixedForm").addEventListener("submit",event=>{event.preventDefault();const amount=Number($("fixedAmount").value);if(!Number.isSafeInteger(amount)||amount<=0){alert("金額は1円以上の整数で入力してね。");return;}const today=localDateString();fixedCosts.push({id:Date.now().toString()+Math.random().toString(36).slice(2,6),name:$("fixedName").value.trim(),amount,category:$("fixedCategory").value,method:$("fixedMethod").value,day:Number($("fixedDay").value),enabled:true,startMonth:monthStart(today)});if(!saveFixedCosts()){fixedCosts.pop();return;}$("fixedForm").reset();setupFixedDayOptions();processFixedCosts();renderFixedCosts();renderAll();alert("固定費を登録したよ。登録日が今日以前なら今月分も追加されるよ。");});
+$("checkTestDate").addEventListener("click",()=>{const date=$("testDate").value;if(!date){$("testResult").textContent="確認したい日付を選んでね。";return;}const due=date.slice(8,10)>="20";const key="auto-allowance-"+date.slice(0,7);const exists=records.some(r=>r.autoKey===key||r.id===key);$("testResult").textContent=due?(exists?"この日付なら対象月のお小遣いはすでに登録済み。重複登録しないよ。":"この日付なら、その月の20日分のお小遣いが登録対象になるよ。これは確認だけで、実際の記録は追加していないよ。"):"この日付は20日より前なので、その月のお小遣いはまだ登録対象にならないよ。実際の記録は追加していないよ。";});
+$("entryForm").addEventListener("submit",event=>{
+  event.preventDefault();const amount=Number($("amount").value);
+  if(!Number.isSafeInteger(amount)||amount<=0){alert("金額は1円以上の整数で入力してね。");return;}
+  const record={id:Date.now().toString()+"-"+Math.random().toString(36).slice(2,8),type,date:$("date").value,amount,category:$("category").value,method:$("method").value,memo:$("memo").value.trim()};
+  if(!record.date){alert("日付を入力してね。");return;}
+  records.push(record);if(!saveRecords()){records.pop();return;}
+  selectedDate=record.date;viewMonth=record.date.slice(0,7);$("amount").value="";$("memo").value="";
+  renderAll();showPage("calendar");
+});
+$("date").value=localDateString();setupFixedDayOptions();setupCardDayOptions();setType("expense");addMonthlyAllowanceIfNeeded();processFixedCosts();renderAll();showPage("calendar");
+</script>
+</body>
+</html>
